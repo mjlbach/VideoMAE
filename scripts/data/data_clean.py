@@ -6,8 +6,9 @@ from multiprocessing import Pool
 
 import decord
 import ffmpeg
+import imageio
 
-from petrel_client.client import Client
+# from petrel_client.client import Client
 """
 PREFILE=0
 tail -n1 sta_web_weak_to_clean${PREFILE}_320p.txt | cut -c 24- | xargs -i grep -n {} sta_web_weak_to_clean${PREFILE}.txt | cut -c -6
@@ -17,7 +18,7 @@ tail -n1 sta_web_weak_to_clean${PREFILE}_320p.txt | cut -c 24- | xargs -i grep -
 def data_clean(list_file, start_idx=0):
     # prepare
     video_ext = 'mp4'
-    client = Client('~/petreloss.conf')
+    # client = Client('~/petreloss.conf')
     new_list_file = list_file.replace('.txt', '_320p.txt')
 
     # load video file list
@@ -50,11 +51,11 @@ def data_clean(list_file, start_idx=0):
 
         try:
             # try load video
-            if video_name.startswith('s3'):
-                video_bytes = client.get(video_name, enable_stream=True)
-                decord_vr = decord.VideoReader(video_bytes, ctx=decord.cpu(0))
-            else:
-                decord_vr = decord.VideoReader(video_name, num_threads=1)
+            # if video_name.startswith('s3'):
+                # video_bytes = client.get(video_name, enable_stream=True)
+                # decord_vr = decord.VideoReader(video_bytes, ctx=decord.cpu(0))
+            # else:
+            decord_vr = decord.VideoReader(video_name, num_threads=1)
 
             duration = len(decord_vr)
             if duration < 30:
@@ -81,7 +82,9 @@ def data_clean(list_file, start_idx=0):
 
         # process the video
         temp_video_file = list_file.replace('.txt', '.mp4')
-        video_bytes = client.get(video_name)
+        # video_bytes = client.get(video_name)
+        with open(video_name, 'rb') as file:
+            video_bytes = file.read()
 
         # resize
         proc1 = (ffmpeg.input('pipe:').filter(

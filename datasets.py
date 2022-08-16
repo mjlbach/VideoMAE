@@ -67,6 +67,8 @@ def build_dataset(is_train, test_mode, args):
         else:  
             mode = 'validation'
             anno_path = os.path.join(args.data_path, 'val.csv') 
+        if args.data_manifest:
+            anno_path = args.data_manifest
 
         dataset = VideoClsDataset(
             anno_path=anno_path,
@@ -98,6 +100,8 @@ def build_dataset(is_train, test_mode, args):
         else:  
             mode = 'validation'
             anno_path = os.path.join(args.data_path, 'val.csv') 
+        if args.data_manifest:
+            anno_path = args.data_manifest
 
         dataset = SSVideoClsDataset(
             anno_path=anno_path,
@@ -128,6 +132,8 @@ def build_dataset(is_train, test_mode, args):
         else:  
             mode = 'validation'
             anno_path = os.path.join(args.data_path, 'val.csv') 
+        if args.data_manifest:
+            anno_path = args.data_manifest
 
         dataset = VideoClsDataset(
             anno_path=anno_path,
@@ -159,6 +165,8 @@ def build_dataset(is_train, test_mode, args):
         else:  
             mode = 'validation'
             anno_path = os.path.join(args.data_path, 'val.csv') 
+        if args.data_manifest:
+            anno_path = args.data_manifest
 
         dataset = VideoClsDataset(
             anno_path=anno_path,

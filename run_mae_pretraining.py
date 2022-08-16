@@ -25,6 +25,7 @@ def get_args():
     # Model parameters
     parser.add_argument('--model', default='pretrain_videomae_base_patch16_224', type=str, metavar='MODEL',
                         help='Name of model to train')
+    parser.add_argument('--data_manifest', type=str, help='Name of model to train')
 
     parser.add_argument('--decoder_depth', default=4, type=int,
                         help='depth of decoder')
