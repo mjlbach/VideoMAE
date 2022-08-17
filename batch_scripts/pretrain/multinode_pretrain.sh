@@ -1,6 +1,6 @@
 #!/bin/bash           
 
-#SBATCH --job-name=mvae_ssv2
+#SBATCH --job-name=mvae_ssv2_multinode_90
 #SBATCH --partition=svl
 #SBATCH --time=128:00:00
 #SBATCH --ntasks=4
@@ -13,6 +13,7 @@
 
 #export MASTER_PORT=$((12000 + $RANDOM % 20000))
 export OMP_NUM_THREADS=1
+export NUM_GPUS_PER_NODE=4
 
 source ~/.bashrc  
 conda activate mvae
@@ -29,7 +30,7 @@ head_node_ip=$(srun --nodes=1 --ntasks=1 -w "$head_node" hostname --ip-address)
 for ((i = 0; i < $SLURM_JOB_NUM_NODES; i++)); do
     node_i=${nodes_array[$i]}
     echo "Starting WORKER $i at $node_i"
-    srun --nodes=1 --ntasks=1 --export="all" -w "$node_i" python3 -m torch.distributed.launch --nproc_per_node=4 \
+    srun --nodes=1 --ntasks=1 --export="all" -w "$node_i" python3 -m torch.distributed.launch --nproc_per_node=$NUM_GPUS_PER_NODE \
         --master_port 12320 --nnodes=$SLURM_NTASKS \
         --node_rank=$i --master_addr="$head_node_ip" \
         run_mae_pretraining.py \
