@@ -48,5 +48,7 @@ for ((i = 0; i < $SLURM_JOB_NUM_NODES; i++)); do
         --save_ckpt_freq 20 \
         --epochs 801 \
         --log_dir ${OUTPUT_DIR} \
-        --output_dir ${OUTPUT_DIR}
+        --output_dir ${OUTPUT_DIR} &
 done
+
+wait
