@@ -15,6 +15,8 @@
 export OMP_NUM_THREADS=1
 export NUM_GPUS_PER_NODE=4
 
+cd ~/Repositories/VideoMAE
+
 source ~/.bashrc  
 conda activate mvae
 
