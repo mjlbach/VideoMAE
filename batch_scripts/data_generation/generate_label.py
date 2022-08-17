@@ -20,12 +20,12 @@ train, validate, test = np.split(mp4_list, [int(len(mp4_list)*args.split[0]), in
 
 with open("./train.csv",'w') as f:
     for i in train:
-        f.write(f"{i} label_0\n")
+        f.write(f"{i} 0\n")
 
 with open("./val.csv",'w') as f:
     for i in validate:
-        f.write(f"{i} label_0\n")
+        f.write(f"{i} 0\n")
 
 with open("./test.csv",'w') as f:
     for i in test:
-        f.write(f"{i} label_0\n")
+        f.write(f"{i} 0\n")
