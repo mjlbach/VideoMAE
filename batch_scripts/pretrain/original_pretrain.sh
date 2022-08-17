@@ -1,8 +1,8 @@
 export MASTER_PORT=$((12000 + $RANDOM % 20000))
 export OMP_NUM_THREADS=1
 
-OUTPUT_DIR='YOUR_PATH/k400_videomae_pretrain_base_patch16_224_frame_16x4_tube_mask_ratio_0.9_e800'
-DATA_PATH='YOUR_PATH/list_kinetics-400/train.csv'
+OUTPUT_DIR='/viscam/u/mjlbach/video_memory_project/k400_videomae_pretrain_base_patch16_224_frame_16x4_tube_mask_ratio_0.9_e800'
+DATA_PATH='/viscam/data/SomethingSomethingV2/20bn-something-something-v2_sta_web_140w_320p//train.csv'
 
 JOB_NAME=$1
 PARTITION=${PARTITION:-"video"}
