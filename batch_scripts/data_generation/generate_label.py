@@ -16,7 +16,7 @@ mp4_list = absolute_file_paths(args.video_folder)
 labels = ["" + str(i) for i in range(len(mp4_list))]
 
 assert np.sum(args.split) == 1
-train, validate, test = np.split(mp4_list, [int(len(mp4_list)*args.split[0]), int(len(mp4_list)*args.split[1])])
+train, validate, test = np.split(mp4_list, [int(len(mp4_list)*args.split[0]), int(len(mp4_list)*(args.split[0] + args.split[1]))])
 
 with open("./train.csv",'w') as f:
     for i in train:
