@@ -63,6 +63,9 @@ def get_args():
     parser.add_argument('--imagenet_default_mean_and_std', default=True, action='store_true')
     parser.add_argument('--mask_ratio', default=0.75, type=float,
                         help='ratio of the visual tokens/patches need be masked')
+    parser.add_argument('--frame_offset', type=int, default=60, help='Start of frame to begin for rollout')
+    parser.add_argument('--frame_skip', type=int, default=2, help='Frames to skip when generating rollout videos')
+
     # Model parameters
     parser.add_argument('--model', default='pretrain_videomae_base_patch16_224', type=str, metavar='MODEL',
                         help='Name of model to vis')
@@ -114,7 +117,8 @@ def main(args):
     # frame_id_list = [1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 45, 49, 53, 57, 61]
 
     
-    tmp = np.arange(0,32, 2) + 60
+    frame_skip = args.frame_skip
+    tmp = np.arange(0, args.num_frames * frame_skip, frame_skip) + args.frame_offset
     frame_id_list = tmp.tolist()
     # average_duration = (duration - skip_length + 1) // args.num_frames
     # if average_duration > 0:
