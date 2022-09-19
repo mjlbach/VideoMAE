@@ -72,9 +72,6 @@ def train_one_epoch(args,model: torch.nn.Module, data_loader: Iterable, optimize
                                 parameters=model.parameters(), create_graph=is_second_order,update_grad=(step + 1) % accum_iter == 0)
         loss_scale_value = loss_scaler.state_dict()["scale"]
 
-        if (step + 1) % accum_iter == 0:
-            optimizer.zero_grad()
-
         torch.cuda.synchronize()
 
         metric_logger.update(loss=loss_value)
@@ -105,6 +102,10 @@ def train_one_epoch(args,model: torch.nn.Module, data_loader: Iterable, optimize
 
         if lr_scheduler is not None:
             lr_scheduler.step_update(start_steps + step)
+
+        if (step + 1) % accum_iter == 0:
+            optimizer.zero_grad()
+
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
