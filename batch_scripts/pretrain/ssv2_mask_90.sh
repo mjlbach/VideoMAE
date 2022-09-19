@@ -1,6 +1,6 @@
 #!/bin/bash           
 
-#SBATCH --job-name=mvae_ssv2_8
+#SBATCH --job-name=mvae_ssv2_no_accum
 #SBATCH --partition=viscam
 #SBATCH --time=124:00:00
 #SBATCH --ntasks=8
@@ -20,7 +20,7 @@ cd ~/Repositories/VideoMAE
 source ~/.bashrc  
 conda activate mvae
 
-OUTPUT_DIR='/viscam/u/mjlbach/video_memory_project/ssv2_90_accum'
+OUTPUT_DIR='/viscam/u/mjlbach/video_memory_project/ssv2_90_no_accum'
 DATA_PATH='/viscam/data/SomethingSomethingV2/20bn-something-something-v2_sta_web_140w_320p/train.csv'
 
 
@@ -32,7 +32,7 @@ srun python run_mae_pretraining.py \
         --decoder_depth 4 \
         --batch_size 36 \
         --num_frames 16 \
-        --accum_iter 8 \
+        --accum_iter 1 \
         --sampling_rate 2 \
         --opt adamw \
         --opt_betas 0.9 0.95 \
