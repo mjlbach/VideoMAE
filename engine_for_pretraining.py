@@ -1,4 +1,3 @@
-from itertools import accumulate
 import math
 import sys
 from typing import Iterable
@@ -8,7 +7,7 @@ import utils
 from einops import rearrange
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
-def train_one_epoch(args,model: torch.nn.Module, data_loader: Iterable, optimizer: torch.optim.Optimizer,
+def train_one_epoch(args, model: torch.nn.Module, data_loader: Iterable, optimizer: torch.optim.Optimizer,
                     device: torch.device, epoch: int, loss_scaler, max_norm: float = 0, patch_size: int = 16, 
                     normlize_target: bool = True, log_writer=None, lr_scheduler=None, start_steps=None,
                     lr_schedule_values=None, wd_schedule_values=None):
@@ -109,7 +108,6 @@ def train_one_epoch(args,model: torch.nn.Module, data_loader: Iterable, optimize
 
         if lr_scheduler is not None:
             lr_scheduler.step_update(start_steps + step)
-
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
