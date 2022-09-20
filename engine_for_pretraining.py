@@ -20,7 +20,11 @@ def train_one_epoch(args,model: torch.nn.Module, data_loader: Iterable, optimize
     print_freq = 10
 
     loss_func = nn.MSELoss()
+
     accum_iter=args.accum_iter
+
+    optimizer.zero_grad()
+
     for step, batch in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
         # assign learning rate & weight decay for each step
         it = start_steps + step  # global training iteration
@@ -64,13 +68,16 @@ def train_one_epoch(args,model: torch.nn.Module, data_loader: Iterable, optimize
             print("Loss is {}, stopping training".format(loss_value))
             sys.exit(1)
 
-        loss/=accum_iter
+        loss /= accum_iter
 
         # this attribute is added by timm on one optimizer (adahessian)
         is_second_order = hasattr(optimizer, 'is_second_order') and optimizer.is_second_order
         grad_norm = loss_scaler(loss, optimizer, clip_grad=max_norm,
-                                parameters=model.parameters(), create_graph=is_second_order,update_grad=(step + 1) % accum_iter == 0)
+                                parameters=model.parameters(), create_graph=is_second_order, update_grad=(step + 1) % accum_iter == 0)
         loss_scale_value = loss_scaler.state_dict()["scale"]
+
+        if (step + 1) % accum_iter == 0:
+            optimizer.zero_grad()
 
         torch.cuda.synchronize()
 
@@ -102,9 +109,6 @@ def train_one_epoch(args,model: torch.nn.Module, data_loader: Iterable, optimize
 
         if lr_scheduler is not None:
             lr_scheduler.step_update(start_steps + step)
-
-        if (step + 1) % accum_iter == 0:
-            optimizer.zero_grad()
 
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
