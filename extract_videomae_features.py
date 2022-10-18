@@ -6,13 +6,10 @@ import torch.backends.cudnn as cudnn
 from PIL import Image
 from pathlib import Path
 from timm.models import create_model
-import utils
-import modeling_pretrain
-from datasets import DataAugmentationForVideoMAE
-from torchvision.transforms import ToPILImage
+import utils #type: ignore
+import modeling_pretrain #type: ignore
+import h5py
 from einops import rearrange
-from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
-from decord import VideoReader, cpu
 from torchvision import transforms
 from transforms import *
 from masking_generator import  TubeMaskingGenerator
@@ -147,20 +144,20 @@ def main(args):
         model.encoder.register_forward_hook(get_features('encoder'))
         model(img, bool_masked_pos)
 
-
         features = features['encoder']['output']
         correspondance = torch.zeros_like(img)
         for frame in range(correspondance.shape[2]):
             correspondance[:, :, frame] = frame
 
-        embeddings = {}
         correspondance = rearrange(correspondance, 'b c (t p0) (h p1) (w p2) -> b (t h w) (p0 p1 p2) c', p0=2, p1=patch_size[0], p2=patch_size[0])
         correspondance = correspondance[~bool_masked_pos]
         true_tiles = correspondance[:, 0, 0]
+
+        f = h5py.File(args.img_path.joinpath("videomae_features.hdf5"), "w")
         for fname, idx in zip(Path(args.img_path).glob("*.png"), torch.unique(true_tiles)):
             tiles_embedding = features[:, true_tiles == idx].reshape(-1).cpu()
-            embeddings[fname.name] = np.array(tiles_embedding.cpu())
-        breakpoint()
+            f.create_dataset(f"{fname.name}", data=np.array(tiles_embedding.cpu())
+        f.close()
 
 if __name__ == '__main__':
     opts = get_args()
