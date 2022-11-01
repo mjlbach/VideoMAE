@@ -6,9 +6,9 @@ import torch.backends.cudnn as cudnn
 from PIL import Image
 from pathlib import Path
 from timm.models import create_model
-import utils #type: ignore
-import modeling_pretrain #type: ignore
 import h5py
+import utils
+import modeling_pretrain
 from einops import rearrange
 from torchvision import transforms
 from transforms import *
@@ -44,9 +44,7 @@ class DataAugmentationForVideoMAE(object):
 
 def get_args():
     parser = argparse.ArgumentParser('VideoMAE visualization reconstruction script', add_help=False)
-    parser.add_argument('img_path', type=str, help='input video path')
-    parser.add_argument('save_path', type=str, help='save video path')
-    parser.add_argument('model_path', type=str, help='checkpoint path of model')
+    parser.add_argument('--model_path', type=str, help='checkpoint path of model')
     parser.add_argument('--mask_type', default='random', choices=['random', 'tube'],
                         type=str, help='masked strategy of video tokens/patches')
     parser.add_argument('--num_frames', type=int, default= 16)
@@ -66,11 +64,14 @@ def get_args():
     parser.add_argument('--drop_path', type=float, default=0.0, metavar='PCT',
                         help='Drop path rate (default: 0.1)')
     
+    parser.add_argument(
+        "--trajectory_path", type=str, help="input video path", default=None
+    )
+    parser.add_argument("--dataset_path", type=str, help="input video path", default=None)
     return parser.parse_args()
 
 
 def get_model(args):
-    print(f"Creating model: {args.model}")
     model = create_model(
         args.model,
         pretrained=False,
@@ -81,8 +82,65 @@ def get_model(args):
 
     return model
 
+def process_sequence(args, model, device, path):
+    img_arr = []
+    for img in map(str, path.glob("*.png")):
+        img_arr.append(np.array(Image.open(img)))
+    vr = np.stack(img_arr)
+    num_frames = vr.shape[0]
+    pad = opts.num_frames // 2
+    vr = np.pad(vr, [(pad, pad), (0,0), (0,0), (0,0)]) #type: ignore
 
-def main(args):
+    img_arr = np.array([Image.fromarray(vid).convert('RGB') for vid in vr])
+    patch_size = args.patch_size
+    transforms = DataAugmentationForVideoMAE(args)
+    embedding_arr = torch.zeros(num_frames, 15360)
+    for idx in range(num_frames):
+        img = img_arr[np.arange(0, 16) + idx]
+
+        # frame_id_list = [1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 45, 49, 53, 57, 61]
+        img, bool_masked_pos = transforms((img, None)) # T*C,H,W
+
+        img = img.view((args.num_frames , 3) + img.size()[-2:]).transpose(0,1) # T*C,H,W -> T,C,H,W -> C,T,H,W
+        # img = img.view(( -1 , args.num_frames) + img.size()[-2:]) 
+        bool_masked_pos = torch.from_numpy(bool_masked_pos)
+
+        with torch.no_grad():
+            # img = img[None, :]
+            # bool_masked_pos = bool_masked_pos[None, :]
+            img = img.unsqueeze(0)
+            bool_masked_pos = bool_masked_pos.unsqueeze(0)
+            
+            img = img.to(device, non_blocking=True)
+            bool_masked_pos = bool_masked_pos.to(device, non_blocking=True).flatten(1).to(torch.bool)
+            features = {}
+            def get_features(name):
+                def hook(model, input, output): # type: ignore
+                    features[name] = {
+                        # "input": input,
+                        "output": output
+                    }
+                return hook
+            # model.encoder_to_decoder.register_forward_hook(get_features('encoder_to_decoder'))
+            model.encoder.register_forward_hook(get_features('encoder'))
+            model(img, bool_masked_pos)
+
+            features = features['encoder']['output']
+            correspondance = torch.zeros_like(img)
+            for frame in range(correspondance.shape[2]):
+                correspondance[:, :, frame] = frame
+
+            correspondance = rearrange(correspondance, 'b c (t p0) (h p1) (w p2) -> b (t h w) (p0 p1 p2) c', p0=2, p1=patch_size[0], p2=patch_size[0])
+            correspondance = correspondance[~bool_masked_pos]
+            true_tiles = correspondance[:, 0, 0]
+            frame_to_extract = 8
+            embedding_arr[idx] = features[:, true_tiles == frame_to_extract].reshape(-1)
+
+    f = h5py.File(path.joinpath("data.hdf5"), "w")
+    f.create_dataset(f"videomae_features", data=np.array(embedding_arr.cpu()))
+    f.close()
+
+def main(args, path):
     print(args)
 
     device = torch.device(args.device)
@@ -90,7 +148,6 @@ def main(args):
 
     model = get_model(args)
     patch_size = model.encoder.patch_embed.patch_size
-    print("Patch size = %s" % str(patch_size))
     args.window_size = (args.num_frames // 2, args.input_size // patch_size[0], args.input_size // patch_size[1])
     args.patch_size = patch_size
 
@@ -99,66 +156,17 @@ def main(args):
     model.load_state_dict(checkpoint['model'])
     model.eval()
 
-    if args.save_path:
-        Path(args.save_path).mkdir(parents=True, exist_ok=True)
-
-    img_arr = []
-    for img in map(str, Path(args.img_path).glob("*.png")):
-        img_arr.append(np.array(Image.open(img)))
-    vr = np.stack(img_arr)
-
-    # frame_id_list = [1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 45, 49, 53, 57, 61]
-
-    
-    tmp = np.arange(0,32, 2) + 60
-    frame_id_list = tmp.tolist()
-
-    video_data = vr
-    img = [Image.fromarray(video_data[vid, :, :, :]).convert('RGB') for vid, _ in enumerate(frame_id_list)]
-
-    transforms = DataAugmentationForVideoMAE(args)
-    img, bool_masked_pos = transforms((img, None)) # T*C,H,W
-
-    img = img.view((args.num_frames , 3) + img.size()[-2:]).transpose(0,1) # T*C,H,W -> T,C,H,W -> C,T,H,W
-    # img = img.view(( -1 , args.num_frames) + img.size()[-2:]) 
-    bool_masked_pos = torch.from_numpy(bool_masked_pos)
-
-    with torch.no_grad():
-        # img = img[None, :]
-        # bool_masked_pos = bool_masked_pos[None, :]
-        img = img.unsqueeze(0)
-        print(img.shape)
-        bool_masked_pos = bool_masked_pos.unsqueeze(0)
-        
-        img = img.to(device, non_blocking=True)
-        bool_masked_pos = bool_masked_pos.to(device, non_blocking=True).flatten(1).to(torch.bool)
-        features = {}
-        def get_features(name):
-            def hook(model, input, output):
-                features[name] = {
-                    # "input": input,
-                    "output": output
-                }
-            return hook
-        # model.encoder_to_decoder.register_forward_hook(get_features('encoder_to_decoder'))
-        model.encoder.register_forward_hook(get_features('encoder'))
-        model(img, bool_masked_pos)
-
-        features = features['encoder']['output']
-        correspondance = torch.zeros_like(img)
-        for frame in range(correspondance.shape[2]):
-            correspondance[:, :, frame] = frame
-
-        correspondance = rearrange(correspondance, 'b c (t p0) (h p1) (w p2) -> b (t h w) (p0 p1 p2) c', p0=2, p1=patch_size[0], p2=patch_size[0])
-        correspondance = correspondance[~bool_masked_pos]
-        true_tiles = correspondance[:, 0, 0]
-
-        f = h5py.File(args.img_path.joinpath("videomae_features.hdf5"), "w")
-        for fname, idx in zip(Path(args.img_path).glob("*.png"), torch.unique(true_tiles)):
-            tiles_embedding = features[:, true_tiles == idx].reshape(-1).cpu()
-            f.create_dataset(f"{fname.name}", data=np.array(tiles_embedding.cpu())
-        f.close()
+    process_sequence(args, model, device, path)
 
 if __name__ == '__main__':
     opts = get_args()
-    main(opts)
+
+    assert (
+        opts.trajectory_path or opts.dataset_path
+    ), "Either --trajectory_path or --dataset_path must be passed to the script"
+
+    if opts.trajectory_path:
+        main(opts, Path(opts.trajectory_path))
+    elif opts.dataset_path:
+        for path in Path(opts.dataset_path).rglob("data.hdf5"):
+            main(opts, path.parent)
