@@ -136,7 +136,7 @@ def process_sequence(args, model, device, path):
             frame_to_extract = 8
             embedding_arr[idx] = features[:, true_tiles == frame_to_extract].reshape(-1)
 
-    f = h5py.File(path.joinpath("data.hdf5"), "w")
+    f = h5py.File(path.joinpath("data.hdf5"), "r+")
     f.create_dataset(f"videomae_features", data=np.array(embedding_arr.cpu()))
     f.close()
 
