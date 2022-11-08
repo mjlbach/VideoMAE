@@ -83,7 +83,15 @@ def get_model(args):
     return model
 
 def process_sequence(args, model, device, path):
+    f = h5py.File(path.joinpath("data.hdf5"), "r+")
+    print(path)
+    if "videomae_features" in f:
+        f.close()
+        return
+    else:
+        f.close()
     img_arr = []
+   
     for img in map(str, path.glob("*.png")):
         img_arr.append(np.array(Image.open(img)))
     vr = np.stack(img_arr)
@@ -116,16 +124,19 @@ def process_sequence(args, model, device, path):
             features = {}
             def get_features(name):
                 def hook(model, input, output): # type: ignore
-                    features[name] = {
-                        # "input": input,
-                        "output": output
-                    }
+                    try:
+                        features[name] = {
+                            # "input": input,
+                            "output": output
+                        }
+                    except:
+                        breakpoint()
                 return hook
             # model.encoder_to_decoder.register_forward_hook(get_features('encoder_to_decoder'))
             model.encoder.register_forward_hook(get_features('encoder'))
             model(img, bool_masked_pos)
 
-            features = features['encoder']['output']
+            new_features = features['encoder']['output']
             correspondance = torch.zeros_like(img)
             for frame in range(correspondance.shape[2]):
                 correspondance[:, :, frame] = frame
@@ -134,13 +145,13 @@ def process_sequence(args, model, device, path):
             correspondance = correspondance[~bool_masked_pos]
             true_tiles = correspondance[:, 0, 0]
             frame_to_extract = 8
-            embedding_arr[idx] = features[:, true_tiles == frame_to_extract].reshape(-1)
+            embedding_arr[idx] = new_features[:, true_tiles == frame_to_extract].reshape(-1)
 
     f = h5py.File(path.joinpath("data.hdf5"), "r+")
     f.create_dataset(f"videomae_features", data=np.array(embedding_arr.cpu()))
     f.close()
 
-def main(args, path):
+def main(args):
     print(args)
 
     device = torch.device(args.device)
@@ -156,17 +167,16 @@ def main(args, path):
     model.load_state_dict(checkpoint['model'])
     model.eval()
 
-    process_sequence(args, model, device, path)
-
-if __name__ == '__main__':
-    opts = get_args()
-
     assert (
         opts.trajectory_path or opts.dataset_path
     ), "Either --trajectory_path or --dataset_path must be passed to the script"
 
-    if opts.trajectory_path:
-        main(opts, Path(opts.trajectory_path))
-    elif opts.dataset_path:
-        for path in Path(opts.dataset_path).rglob("data.hdf5"):
-            main(opts, path.parent)
+    if args.trajectory_path:
+        process_sequence(args, model, device, Path(args.trajectory_path))
+    elif args.dataset_path:
+        for path in Path(args.dataset_path).rglob("data.hdf5"):
+            process_sequence(args, model, device, path.parent)
+
+if __name__ == '__main__':
+    opts = get_args()
+    main(opts)

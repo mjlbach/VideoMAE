@@ -1,7 +1,7 @@
 # Set the path to save video
 OUTPUT_DIR='test_features'
 # path to video for visualization
-VIDEO_PATH='/home/michael/Repositories/video_memory_project/video-memory-retrieval/data/trajectories'
+VIDEO_PATH='/home/michael/Repositories/video_memory_project/video-memory-retrieval/data/trajectories/train'
 # path to pretrain model
 MODEL_PATH=$(pwd)/checkpoint-2400.pth
 
