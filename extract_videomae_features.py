@@ -9,6 +9,7 @@ from timm.models import create_model
 import h5py
 import utils
 import modeling_pretrain
+import tqdm
 from einops import rearrange
 from torchvision import transforms
 from transforms import *
@@ -84,12 +85,12 @@ def get_model(args):
 
 def process_sequence(args, model, device, path):
     f = h5py.File(path.joinpath("data.hdf5"), "r+")
-    print(path)
     if "videomae_features" in f:
         f.close()
         return
     else:
         f.close()
+
     img_arr = []
    
     for img in map(str, path.glob("*.png")):
@@ -174,7 +175,10 @@ def main(args):
     if args.trajectory_path:
         process_sequence(args, model, device, Path(args.trajectory_path))
     elif args.dataset_path:
-        for path in Path(args.dataset_path).rglob("data.hdf5"):
+        pbar = tqdm.tqdm(list(Path(args.dataset_path).rglob("data.hdf5")))
+
+        for path in pbar:
+            pbar.set_description(f"{path}")  # type: ignore
             process_sequence(args, model, device, path.parent)
 
 if __name__ == '__main__':
