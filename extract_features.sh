@@ -1,5 +1,6 @@
 # path to video for visualization
-DATASET_PATH='/home/michael/Documents/data/trajectories/'
+# DATASET_PATH='/home/michael/Documents/data/trajectories/'
+DATASET_PATH='/home/michael/Repositories/video_memory_project/video-memory-retrieval/data/trajectories/'
 # path to pretrain model
 MODEL_PATH=$(pwd)/checkpoint-2400.pth
 
